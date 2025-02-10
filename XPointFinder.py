@@ -3,6 +3,7 @@ from utils import gkData
 from utils import auxFuncs
 import matplotlib.pyplot as plt
 from utils import plotParams
+import os
 
 
 params = {} #Initialize dictionary to store plotting and other parameters
@@ -11,13 +12,13 @@ params = {} #Initialize dictionary to store plotting and other parameters
 #Tested to handle g0 and g2: VM, 5M, 10M
 #Requires a _params.txt file in your data directory of the form gkeyllOutputBasename_params.txt! See example_params.txt for formatting
 
-paramFile = '/Users/jtenbarg/Desktop/Runs/ColbyTurbulence/PKPM_New/Data/pkpm_2d_turb_p2-params.txt'
+paramFile = '/lore/smithc11/projects/nsfCssiSpaceWeather2022/mlReconnection2025/GkeyllTurbulence_672x672grid/pkpm_2d_turb_p2-params.txt'
 
-fileNum = 106 #Frame number
+fileNum = 140 #Frame number
 interpFac = 1 #Apply FFT interpolation (for interpFac > 1) of order interpFac.
 useB = 0 #Use Bx and By rather than the vector potential. Seems to not work as well
 constructJz = 1 #Construct Jz from psi. Less accurate but only requires fields files
-saveFig = 0 #Save figure
+saveFig = 1 #Save figure
 
 
 varid = 'psi' #See table of choices in README
@@ -114,7 +115,8 @@ if params["axisEqual"]:
     plt.gca().set_aspect('equal', 'box')
 plt.title('Critical pts = {}, Xpts = {}, OptsMax = {}, OptsMin = {}'.format(numC, numX, numOMax, numOMin) )
 if saveFig:
-    saveFilename = tmp.filenameBase + 'xPts' + '_interpFac_' + str(interpFac) + '_' + format(fileNum, '04') + '.png'
+    basename = os.path.basename(tmp.filenameBase)
+    saveFilename = basename + 'xPts' + '_interpFac_' + str(interpFac) + '_' + format(fileNum, '04') + '.png'
     plt.savefig(saveFilename, dpi=300)
     print('Figure written to ',saveFilename)
 plt.show()
