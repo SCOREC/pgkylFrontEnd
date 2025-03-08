@@ -23,8 +23,8 @@ class XPointDataset(Dataset):
     """
     def __init__(self, paramFile, fnumList, constructJz=1, interpFac=1, saveFig=1):
         """
-        paramFile:   Path to parameter file (string).
-        fnumList:    List of frames to iterate. 
+        paramFile:   Path to your parameter file (string).
+        fnumList:    List of frames to iterate, e.g. range(75,86).
         constructJz: Whether to compute jz from second derivatives or load from gkData.
         interpFac:   Interpolation factor for FFT-based upsampling.
         saveFig:     If True, we might save intermediate plots (optional).
