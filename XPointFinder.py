@@ -12,9 +12,9 @@ params = {} #Initialize dictionary to store plotting and other parameters
 #Tested to handle g0 and g2: VM, 5M, 10M
 #Requires a _params.txt file in your data directory of the form gkeyllOutputBasename_params.txt! See example_params.txt for formatting
 
-paramFile = '/lore/smithc11/projects/nsfCssiSpaceWeather2022/mlReconnection2025/1024Res_v0/pkpm_2d_turb_p2-params.txt'
+paramFile = '/lore/smithc11/projects/nsfCssiSpaceWeather2022/mlReconnection2025/GkeyllTurbulence_672x672grid/pkpm_2d_turb_p2-params.txt'
 
-fileNum = 75 #Frame number // good default: 75
+fileNum = 140 #Frame number
 interpFac = 1 #Apply FFT interpolation (for interpFac > 1) of order interpFac.
 useB = 0 #Use Bx and By rather than the vector potential. Seems to not work as well
 constructJz = 1 #Construct Jz from psi. Less accurate but only requires fields files
@@ -53,146 +53,87 @@ params["colormap"] = 'bwr'#Colormap for 2D plots: inferno*, bwr (red-blue), any 
 #End input########################################################
 
 var = gkData.gkData(paramFile,fileNum,'psi',params).compactRead()
-
-print(f"var.data shape: {var.data.shape}, min: {var.data.min()}, max: {var.data.max()}")
 #Construct jz = -grad^2 psi / mu_0. This minimizes data files that need to be shared to just the fields.
 if constructJz:
-    [df_dx,df_dy,df_dz] = auxFuncs.genGradient(var.data,var.dx)
-    [d2f_dxdx,d2f_dxdy,d2f_dxdz] = auxFuncs.genGradient(df_dx,var.dx)
-    [d2f_dydx,d2f_dydy,d2f_dydz] = auxFuncs.genGradient(df_dy,var.dx)
-    jz = -(d2f_dxdx + d2f_dydy) / var.mu0
+	[df_dx,df_dy,df_dz] = auxFuncs.genGradient(var.data,var.dx)
+	[d2f_dxdx,d2f_dxdy,d2f_dxdz] = auxFuncs.genGradient(df_dx,var.dx)
+	[d2f_dydx,d2f_dydy,d2f_dydz] = auxFuncs.genGradient(df_dy,var.dx)
+	jz = -(d2f_dxdx + d2f_dydy) / var.mu0
 else:
-    jz = getattr(gkData.gkData(paramFile,fileNum,'jz',params).compactRead(),'data')
+	jz = getattr(gkData.gkData(paramFile,fileNum,'jz',params).compactRead(),'data')
 
 coords0 = var.coords;
 
 if useB:
-    bx = getattr(gkData.gkData(paramFile,fileNum,'bx',params).compactRead(),'data')
-    by = getattr(gkData.gkData(paramFile,fileNum,'by',params).compactRead(),'data')
+	bx = getattr(gkData.gkData(paramFile,fileNum,'bx',params).compactRead(),'data')
+	by = getattr(gkData.gkData(paramFile,fileNum,'by',params).compactRead(),'data')
 
 if interpFac > 1:
-    [psi, coords] = auxFuncs.getFFTInterp(var.data, coords0, fac=interpFac)
-    [jz, coords] = auxFuncs.getFFTInterp(jz, coords0, fac=interpFac)
-    if useB:
-        [bx, coords] = auxFuncs.getFFTInterp(bx, coords0, fac=interpFac)
-        [by, coords] = auxFuncs.getFFTInterp(by, coords0, fac=interpFac)
+	[psi, coords] = auxFuncs.getFFTInterp(var.data, coords0, fac=interpFac)
+	[jz, coords] = auxFuncs.getFFTInterp(jz, coords0, fac=interpFac)
+	if useB:
+		[bx, coords] = auxFuncs.getFFTInterp(bx, coords0, fac=interpFac)
+		[by, coords] = auxFuncs.getFFTInterp(by, coords0, fac=interpFac)
 else:
-     print("Using original data")
-     psi = var.data; coords = coords0
-    
-    
+	 psi = var.data; coords = coords0
+	
+	
 x = coords[0]; y = coords[1]; 
 dx = [coords[d][1] - coords[d][0] for d in range(2)]
 
 if useB:
-    f = bx; g = by
+	f = bx; g = by
 else:
-    f = psi; g = None
+	f = psi; g = None
 
 #Indicies of critical points, X points, and O points (max and min)
 critPoints = auxFuncs.getCritPoints(f, g=g, dx=dx)
 [xpts, optsMax, optsMin] = auxFuncs.getXOPoints(f, critPoints, g=g, dx=dx)
 
-# print(f"xpts shape: {xpts.shape}, min: {xpts.min()}, max: {xpts.max()}")
-
 numC = np.shape(critPoints)[1]
 numX = np.shape(xpts)[0]; numOMax = np.shape(optsMax)[0]; numOMin = np.shape(optsMin)[0];
 
 #Create array of 0s with 1s only at X points
-binaryMap = np.zeros(np.shape(f)); 
-binaryMap[xpts[:,0],xpts[:,1]] = 1
-
-print(f"psi shape: {psi.shape}, min: {psi.min()}, max: {psi.max()}")
-print(f"binary shape: {binaryMap.shape}, min: {binaryMap.min()}, max: {binaryMap.max()}")
-
-np.savetxt('binaryMap.txt', binaryMap)
-np.savetxt('psi.txt', psi)
+binaryMap = np.zeros(np.shape(f)); binaryMap[xpts[:,0],xpts[:,1]] = 1
 
 
-if False:
-    plt.figure(figsize=(12,8))
-    plt.pcolormesh(x/params["axesNorm"][0], y/params["axesNorm"][1], np.transpose(jz), shading="gouraud")
-    plt.plot(x[xpts[:,0]]/params["axesNorm"][0],y[xpts[:,1]]/params["axesNorm"][1],'xk')
-    plt.plot(x[optsMin[:,0]]/params["axesNorm"][0],y[optsMin[:,1]]/params["axesNorm"][1],'oc')
-    plt.plot(x[optsMax[:,0]]/params["axesNorm"][0],y[optsMax[:,1]]/params["axesNorm"][1],'om')
-    plt.xlabel(params["axesLabels"][0]); plt.ylabel(params["axesLabels"][1])
-    plt.colorbar(); plt.set_cmap(params["colormap"])
-    if params["symBar"]:
-        maxLim = np.max(np.abs(jz))
-        plt.clim(-maxLim, maxLim)
-    if params["plotContours"]:   
-        plt.rcParams['contour.negative_linestyle'] = 'solid'
-        plt.contour(x/params["axesNorm"][0], y/params["axesNorm"][1], np.transpose(psi),\
-            params["numContours"], colors = params["colorContours"], linewidths=0.75)
-    if params["axisEqual"]:
-        plt.gca().set_aspect('equal', 'box')
-    plt.title('Critical pts = {}, Xpts = {}, OptsMax = {}, OptsMin = {}'.format(numC, numX, numOMax, numOMin) )
-    if saveFig:
-        basename = os.path.basename(tmp.filenameBase)
-        saveFilename = basename + 'xPts' + '_interpFac_' + str(interpFac) + '_' + format(fileNum, '04') + '.png'
-        plt.savefig(saveFilename, dpi=300)
-        print('Figure written to ',saveFilename)
-    plt.show()
+plt.figure(figsize=(12,8))
+plt.pcolormesh(x/params["axesNorm"][0], y/params["axesNorm"][1], np.transpose(jz), shading="gouraud")
+plt.plot(x[xpts[:,0]]/params["axesNorm"][0],y[xpts[:,1]]/params["axesNorm"][1],'xk')
+plt.plot(x[optsMin[:,0]]/params["axesNorm"][0],y[optsMin[:,1]]/params["axesNorm"][1],'oc')
+plt.plot(x[optsMax[:,0]]/params["axesNorm"][0],y[optsMax[:,1]]/params["axesNorm"][1],'om')
+plt.xlabel(params["axesLabels"][0]); plt.ylabel(params["axesLabels"][1])
+plt.colorbar(); plt.set_cmap(params["colormap"])
+if params["symBar"]:
+	maxLim = np.max(np.abs(jz))
+	plt.clim(-maxLim, maxLim)
+if params["plotContours"]:   
+    plt.rcParams['contour.negative_linestyle'] = 'solid'
+    plt.contour(x/params["axesNorm"][0], y/params["axesNorm"][1], np.transpose(psi),\
+        params["numContours"], colors = params["colorContours"], linewidths=0.75)
+if params["axisEqual"]:
+    plt.gca().set_aspect('equal', 'box')
+plt.title('Critical pts = {}, Xpts = {}, OptsMax = {}, OptsMin = {}'.format(numC, numX, numOMax, numOMin) )
+if saveFig:
+    basename = os.path.basename(tmp.filenameBase)
+    saveFilename = basename + 'xPts' + '_interpFac_' + str(interpFac) + '_' + format(fileNum, '04') + '.png'
+    plt.savefig(saveFilename, dpi=300)
+    print('Figure written to ',saveFilename)
+plt.show()
 
 #Plot binaryMap
-if True:
-    plt.figure(figsize=(12,8))
-    plt.pcolormesh(x/params["axesNorm"][0], y/params["axesNorm"][1], np.transpose(binaryMap), shading="gouraud")
-    plt.plot(x[xpts[:,0]]/params["axesNorm"][0],y[xpts[:,1]]/params["axesNorm"][1],'xk')
+if False:
+	plt.figure(figsize=(12,8))
+	plt.pcolormesh(x/params["axesNorm"][0], y/params["axesNorm"][1], np.transpose(binaryMap), shading="gouraud")
+	plt.plot(x[xpts[:,0]]/params["axesNorm"][0],y[xpts[:,1]]/params["axesNorm"][1],'xk')
 
-    plt.xlabel(params["axesLabels"][0]); plt.ylabel(params["axesLabels"][1])
-    plt.colorbar(); plt.set_cmap('binary')
-    plt.gca().set_aspect('equal', 'box')
-    if params["plotContours"]:   
-        plt.rcParams['contour.negative_linestyle'] = 'solid'
-        plt.contour(x/params["axesNorm"][0], y/params["axesNorm"][1], np.transpose(psi),\
-            params["numContours"], colors = params["colorContours"], linewidths=0.75)
-    if saveFig:
-        basename = os.path.basename(tmp.filenameBase)
-        saveFilename = basename + 'xPts' + '_interpFac_' + str(interpFac) + '_' + format(fileNum, '04') + '.png'
-        plt.savefig(saveFilename, dpi=300)
-        print('Figure written to ',saveFilename)
-    plt.show()
+	plt.xlabel(params["axesLabels"][0]); plt.ylabel(params["axesLabels"][1])
+	plt.colorbar(); plt.set_cmap('binary')
+	plt.gca().set_aspect('equal', 'box')
+	if params["plotContours"]:   
+	    plt.rcParams['contour.negative_linestyle'] = 'solid'
+	    plt.contour(x/params["axesNorm"][0], y/params["axesNorm"][1], np.transpose(psi),\
+	        params["numContours"], colors = params["colorContours"], linewidths=0.75)
+	plt.show()
 
-
-if False: 
-    plt.figure(figsize=(12,8))
-    # Instead of jz, color the figure by psi:
-    plt.pcolormesh(
-        x / params["axesNorm"][0],
-        y / params["axesNorm"][1],
-        np.transpose(psi), 
-        shading="gouraud"
-    )
-
-    plt.xlabel(params["axesLabels"][0])
-    plt.ylabel(params["axesLabels"][1])
-    plt.colorbar()
-    # Optionally choose a colormap, e.g. "bwr" or "inferno"
-    plt.set_cmap(params["colormap"])
-
-    # Optionally, you can contour psi as well:
-    if params["plotContours"]:
-        plt.contour(
-            x / params["axesNorm"][0], 
-            y / params["axesNorm"][1], 
-            np.transpose(psi), 
-            params["numContours"], 
-            colors=params["colorContours"], 
-            linewidths=0.75
-        )
-
-    # If you want the axes to have equal aspect ratio:
-    if params["axisEqual"]:
-        plt.gca().set_aspect('equal', 'box')
-
-    plt.title('Vector Potential (psi) Only')
-
-    if saveFig:
-        basename = os.path.basename(tmp.filenameBase)
-        saveFilename = basename + 'xPts' + '_interpFac_' + str(interpFac) + '_' + format(fileNum, '04') + '.png'
-        plt.savefig(saveFilename, dpi=300)
-        print('Figure written to ',saveFilename)
-    
-    plt.show()
 
