@@ -12,7 +12,7 @@ params = {} #Initialize dictionary to store plotting and other parameters
 #Tested to handle g0 and g2: VM, 5M, 10M
 #Requires a _params.txt file in your data directory of the form gkeyllOutputBasename_params.txt! See example_params.txt for formatting
 
-paramFile = '/lore/smithc11/projects/nsfCssiSpaceWeather2022/mlReconnection2025/GkeyllTurbulence_672x672grid/pkpm_2d_turb_p2-params.txt'
+paramFile = '/space/cwsmith/nsfCssiSpaceWeather2022/mlReconnection2025/GkeyllTurbulence_672x672grid/pkpm_2d_turb_p2-params.txt'
 
 fileNum = 140 #Frame number
 interpFac = 1 #Apply FFT interpolation (for interpFac > 1) of order interpFac.
